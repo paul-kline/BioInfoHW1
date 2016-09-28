@@ -651,11 +651,12 @@ public class Utils {
 
     }
 
-    private String mkAlignmentString(char c, char[] xs, DIRECTION[] dirs) {
+    private String mkAlignmentString(char c, char[] xs, ArrayList<Pair<DIRECTION, Integer>> dirs) {
         String res = "";
         int i = 0;
-        for (DIRECTION dir : dirs) {
-            switch (dir) {
+
+        for (Pair<DIRECTION, Integer> dir : dirs) {
+            switch (dir.getKey()) {
                 case SOUTH:
                     switch (c) {
                         case 'X':
@@ -725,9 +726,8 @@ public class Utils {
             result[UPPER][0][j] = result[UPPER][0][j - 1] + gapExtentionCost;
             result[UPPER][j][0] = initGapCost;
 
-            result[MIDDLE][0][j] = 0; //maybe?? I think? there is no cost to before, right?
-            result[MIDDLE][j][0] = 0;
-
+//            result[MIDDLE][0][j] = 0; //maybe?? I think? there is no cost to before, right?
+//            result[MIDDLE][j][0] = 0; already zeros
             //in this matrix, the top row is all initial gaps. 
             result[LOWER][0][j] = initGapCost;
             result[LOWER][j][0] = result[LOWER][j - 1][0] + gapExtentionCost;
@@ -763,6 +763,7 @@ s i,j
             if (to > result[LOWER][0].length) {
                 to = result[LOWER][0].length;
             }
+            System.out.println("from: " + from + " to: " + to);
             for (int j = from; j < to; j++) {
 
                 result[LOWER][i][j] = Integer.max(
@@ -781,6 +782,10 @@ s i,j
             }
 
         }
+        print2D(result[LOWER]);
+        print2D(result[MIDDLE]);
+        print2D(result[UPPER]);
+        System.out.println("done");
         return result;
     }
 
@@ -789,7 +794,7 @@ s i,j
     }
 
     public enum DIRECTION {
-        NORTH, WEST, DIAG, SOUTH, EAST, UP, DOWN, UP_NORTH, DOWN_WEST
+        NORTH, WEST, DIAG, SOUTH, EAST, UP, DOWN, UP_NORTH, DOWN_WEST, DOWN_SOUTH, UP_EAST
 
     };
     static final int LOWER = 0;
@@ -857,17 +862,18 @@ s i,j
         return new LinearEquation(arr.length / (float) arr[0].length, 0);
     }
 
-    public Pair<DIRECTION, Integer>[] mkBacktrace(int[][][] a3) {
-        ArrayList<Pair<DIRECTION, Integer>> directions = new ArrayList<>((a3[LOWER].length + a3[LOWER][0].length) * 2);
+    public ArrayList<BacktraceStep> mkBacktrace(int[][][] a3, char[] xs, char[] ys) {
+        ArrayList<BacktraceStep> directions = new ArrayList<>((a3[LOWER].length + a3[LOWER][0].length) * 2);
         int i = a3[LOWER].length - 1;
         int j = a3[LOWER][0].length - 1;
         int k = MIDDLE;
 
-        while (i > 0 || j > 0) {
+        while (i > 0 && j > 0) {
             boolean igood = inBounds(a3[LOWER], i - 1, j);
             boolean jgood = inBounds(a3[LOWER], i, j - 1);
             int max;
             DIRECTION dir = null;
+            BacktraceStep step = new BacktraceStep();
             switch (k) {
                 case LOWER:
                     //we can jump up 
@@ -876,13 +882,22 @@ s i,j
                                 a3[MIDDLE][i - 1][j],
                                 a3[LOWER][i - 1][j]);//, 
                         // a3[UPPER][i][j - 1]);
+                        step.setScore(max);
                         if (max == a3[MIDDLE][i - 1][j]) {
                             dir = DIRECTION.UP_NORTH;
-                            k=MIDDLE;
+                            k = MIDDLE;
+                            //lower level going back up to matches. that means we're
+                            //the end of a gap in the xs string. 
+                            step.setX('-');
                         } else {
                             dir = DIRECTION.NORTH;
+                            //we are keepin up the whole gap thing. 
+                            step.setX('-');
                         }
+                        // in either case, ychanges and must be set.
+                        step.setY(ys[i - 1]);
                         i--;
+
                     } else {
                         throw new AssertionError();
                     }
@@ -894,27 +909,41 @@ s i,j
                                 a3[MIDDLE][i - 1][j - 1],
                                 a3[LOWER][i][j]),
                                 a3[UPPER][i][j]);
+                        step.setScore(max);
                         if (max == a3[MIDDLE][i - 1][j - 1]) {
                             dir = DIRECTION.DIAG;
+                            //we are in the middle and movin right along! match matey!
+                            step.setX(xs[j - 1]);
+                            step.setY(ys[i - 1]);
+
                             i--;
                             j--;
                         } else if (max == a3[LOWER][i][j]) {
                             dir = DIRECTION.DOWN;
-                            k=LOWER;
+                            //previous best was from ending a gap. no difference, we are matches now!
+                            step.setX(xs[j - 1]);
+                            step.setY(ys[i - 1]);
+                            k = LOWER;
                         } else if (max == a3[UPPER][i][j]) {
                             dir = DIRECTION.UP;
-                            k=UPPER;
+                            k = UPPER;
+                            step.setX(xs[j - 1]);
+                            step.setY(ys[i - 1]);
                         }
                     } else {
                         max = Integer.max(
                                 a3[LOWER][i][j],
                                 a3[UPPER][i][j]);
+                        step.setX(xs[j - 1]);
+                        step.setY(ys[i - 1]);
+                        step.setScore(max);
                         if (max == a3[LOWER][i][j]) {
                             dir = DIRECTION.DOWN;
                             k = LOWER;
+                           
                         } else if (max == a3[UPPER][i][j]) {
                             dir = DIRECTION.UP;
-                            k= UPPER;
+                            k = UPPER;
                         }
                     }
                     break;
@@ -923,25 +952,32 @@ s i,j
                         max = Integer.max(//Integer.max(
                                 a3[MIDDLE][i][j - 1],
                                 a3[UPPER][i][j - 1]);//,
+                        step.setScore(max);
                         if (max == a3[MIDDLE][i][j - 1]) {
                             dir = DIRECTION.DOWN_WEST;
                             k = MIDDLE;
+                             //upper level going back to middle. we are the last part of a gap in ys
+                            step.setX(xs[j-1]);
+                            step.setY('-');
                         } else if (max == a3[UPPER][i][j - 1]) {
                             dir = DIRECTION.WEST;
-                            
+                            //we are continuing the gap
+                            step.setX(xs[j-1]);
+                            step.setY('-');
+
                         }
                         j--;
                     } else {
-                        throw new AssertionError(k + ", " + i + ", " + j + ": " + dir);
+                        throw new AssertionError(k + ", " + i + ", " + j + ": " + Arrays.toString(directions.toArray()));
                     }
                     break;
                 default:
                     throw new AssertionError();
             }
-            System.out.println(k + ", " + i + ", " + j + ": " + dir);
-            directions.add(new Pair(dir, max));
+            System.out.println(k + ", " + i + ", " + j + ": ");
+            directions.add(step);
         }
-        return directions.toArray(new Pair[directions.size()]);
+        return directions;
     }
 
     public DIRECTION[] mkBacktrace(int[][] twoD) {
@@ -991,8 +1027,14 @@ s i,j
         return dirs;
     }
 
+    public ArrayList<Pair<DIRECTION, Integer>> reverse(ArrayList<Pair<DIRECTION, Integer>> arr) {
+        arr.stream().map(x -> new Pair(reverse(x.getKey()), x.getValue())).close();
+        return arr;
+    }
+
     private DIRECTION reverse(DIRECTION dir) {
         switch (dir) {
+            // NORTH, WEST, DIAG, SOUTH, EAST, UP, DOWN, UP_NORTH, DOWN_WEST, DOWN_SOUTH
             case NORTH:
                 return DIRECTION.SOUTH;
             case SOUTH:
@@ -1007,6 +1049,14 @@ s i,j
                 return DIRECTION.DOWN;
             case DOWN:
                 return DIRECTION.UP;
+            case UP_NORTH:
+                return DIRECTION.DOWN_SOUTH;
+            case DOWN_SOUTH:
+                return DIRECTION.UP_NORTH;
+            case DOWN_WEST:
+                return DIRECTION.UP_EAST;
+            case UP_EAST:
+                return DIRECTION.DOWN_WEST;
 
             default:
                 System.out.println(dir);
@@ -1035,14 +1085,14 @@ s i,j
         System.out.println(twoDToString(arr));
     }
 
-    public String alignment(String xs, String ys, DIRECTION[] dirs) {
-        StringBuilder x = new StringBuilder((Integer.max(xs.length(), ys.length()) + 10) * 3);
-        x.append(mkAlignmentString('X', xs.toCharArray(), dirs));
-        x.append('\n');
-        x.append(mkAlignmentString('|', null, dirs));
-        x.append('\n');
-        x.append(mkAlignmentString('Y', ys.toCharArray(), dirs));
-        return x.toString();
-    }
-;
+//    public String alignment(String xs, String ys, DIRECTION[] dirs) {
+//        StringBuilder x = new StringBuilder((Integer.max(xs.length(), ys.length()) + 10) * 3);
+//        x.append(mkAlignmentString('X', xs.toCharArray(), dirs));
+//        x.append('\n');
+//        x.append(mkAlignmentString('|', null, dirs));
+//        x.append('\n');
+//        x.append(mkAlignmentString('Y', ys.toCharArray(), dirs));
+//        return x.toString();
+//    }
+
 }

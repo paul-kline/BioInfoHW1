@@ -5,6 +5,7 @@
  */
 package bioinformatics1;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import javafx.util.Pair;
 
@@ -31,8 +32,11 @@ public class BioInformatics1Main {
 //        System.out.println(utils.alignment(strx, stry, backtrace));
 
         int[][][] triad = utils.mkGridCube(strx, stry, 20);
-        Pair<Utils.DIRECTION, Integer>[] dirs = utils.mkBacktrace(triad);
-        System.out.println(Arrays.toString(dirs));
+        ArrayList<BacktraceStep> dirs = utils.mkBacktrace(triad,strx.toCharArray(),stry.toCharArray());
+        dirs.stream().forEachOrdered(x -> System.out.println(x));
+//        System.out.println("");
+//        utils.reverse(dirs).stream().forEachOrdered(x -> System.out.print(x.getKey() + "," + x.getValue() + " " ));
+        // System.out.println(Arrays.toString(dirs));
     }
     
 }
