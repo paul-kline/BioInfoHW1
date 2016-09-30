@@ -12,10 +12,45 @@ package bioinformatics1;
 public class BacktraceStep {
     char x;
     char y;
+    int k;
+    int i;
+    int j;
+
+    public int getI() {
+        return i;
+    }
+
+    public void setI(int i) {
+        this.i = i;
+    }
+
+    public int getJ() {
+        return j;
+    }
+
+    public void setJ(int j) {
+        this.j = j;
+    }
+
+    public int getK() {
+        return k;
+    }
+
+    public void setK(int k) {
+        this.k = k;
+    }
     int score;
-    
+    Utils.DIRECTION dir;
     public BacktraceStep(){
         
+    }
+
+    public Utils.DIRECTION getDir() {
+        return dir;
+    }
+
+    public void setDir(Utils.DIRECTION dir) {
+        this.dir = dir;
     }
     public BacktraceStep(char x, char y, int score) {
         this.x = x;
@@ -25,9 +60,10 @@ public class BacktraceStep {
 
     @Override
     public String toString(){
-        return "" + x + '\n' +
-               ((score> 0)? "|" : "*") + '\n' +
-                y + "\n";
+        return "k:" + k + " dir:" + dir;
+//        return "" + x + '\n' +
+//               ((score> 0)? "|" : "*") + '\n' +
+//                y + "\n";
     }
     public char getX() {
         return x;

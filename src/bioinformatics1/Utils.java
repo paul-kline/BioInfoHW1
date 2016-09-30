@@ -5,10 +5,19 @@
  */
 package bioinformatics1;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.stream.Stream;
 import javafx.util.Pair;
 
 /**
@@ -18,11 +27,11 @@ import javafx.util.Pair;
 public class Utils {
 
     public Utils() {
-        initBlosum();
+        //initBlosum();
     }
-    public static HashMap<Character, HashMap<Character, Integer>> blosum62;
+    public static HashMap<Character, HashMap<Character, Integer>> blosum62 = initBlosum();
 
-    private void initBlosum() {
+    private static HashMap<Character, HashMap<Character, Integer>> initBlosum() {
         blosum62 = new HashMap<>();
         HashMap<Character, Integer> a = new HashMap<>();
         a.put('A', 4);
@@ -649,6 +658,7 @@ public class Utils {
         astr.put('*', 1);
         blosum62.put('*', astr);
 
+        return blosum62;
     }
 
     private String mkAlignmentString(char c, char[] xs, ArrayList<Pair<DIRECTION, Integer>> dirs) {
@@ -714,23 +724,29 @@ public class Utils {
         // along the first column, we are simply opening the gap for the first time.
         // vise versa for the bottom matrix. 
         //first adjust the band if we need to. it may be unneccessarily big. 
-        if (band == -1 || band > result[0].length) {
-            band = result[0].length;
+        if (band == -1 || band > result[0][0].length) {
+            band = result[0][0].length;
         }
+        System.out.println("band: " + band);
         //now fill er up!
-        result[UPPER][0][0] = initGapCost;
-        result[LOWER][0][0] = initGapCost;
+        result[UPPER][0][0] = OPEN_GAP;
+        result[LOWER][0][0] = OPEN_GAP;
         result[MIDDLE][0][0] = 0;
         for (int j = 1; j < band; j++) {
             //the gap extention cost is added each time for this matrix.
-            result[UPPER][0][j] = result[UPPER][0][j - 1] + gapExtentionCost;
-            result[UPPER][j][0] = initGapCost;
+            result[UPPER][0][j] = result[UPPER][0][j - 1] + EXTEND_GAP;
 
-//            result[MIDDLE][0][j] = 0; //maybe?? I think? there is no cost to before, right?
-//            result[MIDDLE][j][0] = 0; already zeros
             //in this matrix, the top row is all initial gaps. 
-            result[LOWER][0][j] = initGapCost;
-            result[LOWER][j][0] = result[LOWER][j - 1][0] + gapExtentionCost;
+            result[LOWER][0][j] = OPEN_GAP + OPEN_GAP + (j) * EXTEND_GAP;
+
+            result[MIDDLE][0][j] = -10000;//result[UPPER][0][j - 1] + score(xs[j - 1], ys[0]); //maybe?? I think? there is no cost to before, right?
+        }
+        int imax = band > result[LOWER].length ? result[LOWER].length : band;
+        for (int i = 1; i < imax; i++) {
+            result[UPPER][i][0] = OPEN_GAP + OPEN_GAP + (i) * EXTEND_GAP;//initGapCost;
+            result[LOWER][i][0] = result[LOWER][i - 1][0] + EXTEND_GAP;
+            result[MIDDLE][i][0] = -10000;//result[LOWER][i - 1][0] + score(xs[0], ys[i - 1]);
+
         }
         //the matrices have been initialized. we are ready to begin filling with: 
         /*
@@ -767,33 +783,60 @@ s i,j
             for (int j = from; j < to; j++) {
 
                 result[LOWER][i][j] = Integer.max(
-                        result[LOWER][i - 1][j] + gapExtentionCost,
-                        result[LOWER][i - 1][j] + initGapCost + gapExtentionCost);
+                        result[LOWER][i - 1][j] + EXTEND_GAP,
+                        result[MIDDLE][i - 1][j] + OPEN_GAP);
 
                 result[UPPER][i][j] = Integer.max(
-                        result[UPPER][i][j - 1] + gapExtentionCost,
-                        result[UPPER][i][j - 1] + initGapCost + gapExtentionCost
+                        result[UPPER][i][j - 1] + EXTEND_GAP,
+                        result[MIDDLE][i][j - 1] + OPEN_GAP
                 );
                 result[MIDDLE][i][j] = Integer.max(Integer.max(
-                        result[MIDDLE][i - 1][j - 1] + score(ys[i - 1], xs[j - 1]),
+                        result[MIDDLE][i - 1][j - 1],
                         result[LOWER][i][j]),
-                        result[UPPER][i][j]);
+                        result[UPPER][i][j]) + score(ys[i - 1], xs[j - 1]);
 
             }
 
         }
-        print2D(result[LOWER]);
-        print2D(result[MIDDLE]);
+        System.out.println("UPPER");
         print2D(result[UPPER]);
+        System.out.println("MIDDLE");
+        print2D(result[MIDDLE]);
+        System.out.println("LOWER");
+        print2D(result[LOWER]);
+
         System.out.println("done");
         return result;
     }
 
-    private int score(char y, char x) {
+    public static String getGeneFromFile(File fin) {
+        try {
+            StringBuilder sb = new StringBuilder();
+            // Construct BufferedReader from FileReader
+            BufferedReader br = new BufferedReader(new FileReader(fin));
+            
+            String line = null;
+            while ((line = br.readLine()) != null) {
+                if(line.trim().startsWith(">")){
+                    continue;
+                }
+                sb.append(line);//.replaceAll("\n", "").replaceAll("\r", ""));
+                //System.out.println(line);
+            }
+            
+            br.close();
+            return sb.toString();
+        } catch (IOException ex) {
+            Logger.getLogger(Utils.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return null;
+    }
+
+    public static int score(char y, char x) {
         return blosum62.get(y).get(x);
     }
 
-    public enum DIRECTION {
+    public static enum DIRECTION {
         NORTH, WEST, DIAG, SOUTH, EAST, UP, DOWN, UP_NORTH, DOWN_WEST, DOWN_SOUTH, UP_EAST
 
     };
@@ -801,8 +844,8 @@ s i,j
     static final int MIDDLE = 1;
     static final int UPPER = 2;
 
-    static int initGapCost = -11;
-    static int gapExtentionCost = -1;
+    public static int OPEN_GAP = -11;
+    public static int EXTEND_GAP = -1;
 
     public int[][][] mkGridCube(String strx, String stry, int band) {
         return mkGridCube(strx.toCharArray(), stry.toCharArray(), band);
@@ -867,12 +910,24 @@ s i,j
         int i = a3[LOWER].length - 1;
         int j = a3[LOWER][0].length - 1;
         int k = MIDDLE;
-
+        if (a3[MIDDLE][i][j] >= a3[LOWER][i][j] && a3[MIDDLE][i][j] >= a3[UPPER][i][j]) {
+            k = MIDDLE;
+            directions.add(new BacktraceStep(xs[j - 1], ys[i - 1], a3[MIDDLE][i][j]));
+        } else if (a3[LOWER][i][j] >= a3[MIDDLE][i][j] && a3[LOWER][i][j] >= a3[UPPER][i][j]) {
+            k = LOWER;
+            directions.add(new BacktraceStep('-', ys[i - 1], a3[LOWER][i][j]));
+        } else if (a3[UPPER][i][j] >= a3[MIDDLE][i][j] && a3[UPPER][i][j] >= a3[LOWER][i][j]) {
+            k = UPPER;
+            directions.add(new BacktraceStep(xs[j - 1], '-', a3[UPPER][i][j]));
+        }
+        System.out.println("best start k: " + k);
         while (i > 0 && j > 0) {
             boolean igood = inBounds(a3[LOWER], i - 1, j);
             boolean jgood = inBounds(a3[LOWER], i, j - 1);
             int max;
             DIRECTION dir = null;
+            int xin = 0;
+            int yin = 0;
             BacktraceStep step = new BacktraceStep();
             switch (k) {
                 case LOWER:
@@ -884,19 +939,20 @@ s i,j
                         // a3[UPPER][i][j - 1]);
                         step.setScore(max);
                         if (max == a3[MIDDLE][i - 1][j]) {
-                            dir = DIRECTION.UP_NORTH;
+                            step.setDir(DIRECTION.UP_NORTH);
                             k = MIDDLE;
                             //lower level going back up to matches. that means we're
                             //the end of a gap in the xs string. 
                             step.setX('-');
                         } else {
-                            dir = DIRECTION.NORTH;
+                            step.setDir(DIRECTION.NORTH);
                             //we are keepin up the whole gap thing. 
                             step.setX('-');
                         }
                         // in either case, ychanges and must be set.
-                        step.setY(ys[i - 1]);
+//                        step.setY(ys[i - 1]);
                         i--;
+                        step.setY((i - 1) > 0 ? ys[i - 1] : '-');
 
                     } else {
                         throw new AssertionError();
@@ -911,39 +967,49 @@ s i,j
                                 a3[UPPER][i][j]);
                         step.setScore(max);
                         if (max == a3[MIDDLE][i - 1][j - 1]) {
-                            dir = DIRECTION.DIAG;
+                            step.setDir(DIRECTION.DIAG);
                             //we are in the middle and movin right along! match matey!
-                            step.setX(xs[j - 1]);
-                            step.setY(ys[i - 1]);
+//                            step.setX(xs[j - 1]);
+//                            step.setY(ys[i - 1]);
 
                             i--;
                             j--;
+                            step.setX((j - 1) >= 0 ? xs[j - 1] : '-');
+                            step.setY((i - 1) >= 0 ? ys[i - 1] : '-');
                         } else if (max == a3[LOWER][i][j]) {
-                            dir = DIRECTION.DOWN;
+                            step.setDir(DIRECTION.DOWN);
                             //previous best was from ending a gap. no difference, we are matches now!
-                            step.setX(xs[j - 1]);
-                            step.setY(ys[i - 1]);
+//                            step.setX(xs[j - 1]);
+//                            step.setY(ys[i - 1]);
+                            //step = null;
                             k = LOWER;
                         } else if (max == a3[UPPER][i][j]) {
-                            dir = DIRECTION.UP;
+                            step.setDir(DIRECTION.UP);
                             k = UPPER;
-                            step.setX(xs[j - 1]);
-                            step.setY(ys[i - 1]);
+                            //step = null;
+//                            step.setX(xs[j - 1]);
+//                            step.setY(ys[i - 1]);
                         }
                     } else {
                         max = Integer.max(
                                 a3[LOWER][i][j],
                                 a3[UPPER][i][j]);
-                        step.setX(xs[j - 1]);
-                        step.setY(ys[i - 1]);
+
                         step.setScore(max);
                         if (max == a3[LOWER][i][j]) {
-                            dir = DIRECTION.DOWN;
+                            step.setDir(DIRECTION.DOWN);
                             k = LOWER;
-                           
+                            //we are choosing a gap in the xs <--> direction
+//                            step.setX('-');//xs[j - 1]);
+//                            step.setY((i - 1) > 0 ? ys[i - 1] : '-');
+                            step = null;
+
                         } else if (max == a3[UPPER][i][j]) {
-                            dir = DIRECTION.UP;
+                            step.setDir(DIRECTION.UP);
                             k = UPPER;
+                            //step = null;
+//                            step.setX(xs[j - 1]);
+//                            step.setY('-');//(i - 1) > 0 ? ys[i - 1] : '-');
                         }
                     }
                     break;
@@ -954,19 +1020,21 @@ s i,j
                                 a3[UPPER][i][j - 1]);//,
                         step.setScore(max);
                         if (max == a3[MIDDLE][i][j - 1]) {
-                            dir = DIRECTION.DOWN_WEST;
+                            step.setDir(DIRECTION.DOWN_WEST);
                             k = MIDDLE;
-                             //upper level going back to middle. we are the last part of a gap in ys
-                            step.setX(xs[j-1]);
-                            step.setY('-');
+                            //upper level going back to middle. we are the last part of a gap in ys
+//                            step.setX(xs[j - 1]);
+//                            step.setY('-');
                         } else if (max == a3[UPPER][i][j - 1]) {
-                            dir = DIRECTION.WEST;
+                            step.setDir(DIRECTION.WEST);
                             //we are continuing the gap
-                            step.setX(xs[j-1]);
-                            step.setY('-');
+//                            step.setX(xs[j - 1]);
+//                            step.setY('-');
 
                         }
                         j--;
+                        step.setX(xs[j - 1]);
+                        step.setY(ys[i - 1]);
                     } else {
                         throw new AssertionError(k + ", " + i + ", " + j + ": " + Arrays.toString(directions.toArray()));
                     }
@@ -975,7 +1043,24 @@ s i,j
                     throw new AssertionError();
             }
             System.out.println(k + ", " + i + ", " + j + ": ");
-            directions.add(step);
+            if (null != step && !(step.getX() == '-' && step.getY() == '-')) {
+                directions.add(step);
+            }
+        }
+        if (k == LOWER) {
+
+        }
+        while (j > 1) {
+            j--;
+            BacktraceStep x = new BacktraceStep(xs[j - 1], '-', LOWER);
+            directions.add(x);
+
+        }
+        while (i > 1) {
+            i--;
+            BacktraceStep x = new BacktraceStep('-', ys[i - 1], LOWER);
+            directions.add(x);
+
         }
         return directions;
     }
@@ -1012,6 +1097,23 @@ s i,j
         return directions.toArray(new DIRECTION[directions.size()]);
     }
 
+    public static <T> ArrayList<T> reverseList(ArrayList<T> dirs) {
+        T temp;
+        int len = dirs.size();
+        for (int i = 0; i < len; i++) {
+            int rindex = (len - 1) - i;
+
+            temp = dirs.get(rindex);// reverse(dirs[rindex]);
+            dirs.set(rindex, dirs.get(i));
+
+            dirs.set(i, temp);
+            if (Math.abs(rindex - i) < 2) {
+                break;
+            }
+        }
+        return dirs;
+    }
+
     public DIRECTION[] reverse(DIRECTION[] dirs) {
         DIRECTION temp;
         for (int i = 0; i < dirs.length; i++) {
@@ -1032,7 +1134,7 @@ s i,j
         return arr;
     }
 
-    private DIRECTION reverse(DIRECTION dir) {
+    public static DIRECTION reverse(DIRECTION dir) {
         switch (dir) {
             // NORTH, WEST, DIAG, SOUTH, EAST, UP, DOWN, UP_NORTH, DOWN_WEST, DOWN_SOUTH
             case NORTH:
@@ -1072,7 +1174,7 @@ s i,j
         return Integer.min(Integer.min(x, y), z);
     }
 
-    public String twoDToString(int[][] twoD) {
+    public static String twoDToString(int[][] twoD) {
         StringBuilder x = new StringBuilder(twoD.length * twoD[0].length * 4 + 5);
         for (int[] row : twoD) {
             x.append(Arrays.toString(row));
@@ -1081,7 +1183,7 @@ s i,j
         return x.toString();
     }
 
-    public void print2D(int[][] arr) {
+    public static void print2D(int[][] arr) {
         System.out.println(twoDToString(arr));
     }
 
@@ -1094,5 +1196,4 @@ s i,j
 //        x.append(mkAlignmentString('Y', ys.toCharArray(), dirs));
 //        return x.toString();
 //    }
-
 }
