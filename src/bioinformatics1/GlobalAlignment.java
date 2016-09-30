@@ -219,9 +219,10 @@ public class GlobalAlignment {
         Utils.reverseList(backtrace);
 //          backtrace.remove(0);
         backtrace.stream().parallel().forEach(st -> {st.setDir(Utils.reverse(st.getDir()));});
-        System.out.println("");
-        
-        backtrace.stream().forEachOrdered(st ->System.out.println(st));
+        if(BioInformatics1Main.logging){
+            System.out.println("");      
+            backtrace.stream().forEachOrdered(st ->System.out.println(st));
+        }
       
         if(backtrace.size() > 1 && backtrace.get(0).getDir() == Utils.DIRECTION.DIAG && (backtrace.get(1).getDir() == Utils.DIRECTION.UP_EAST || backtrace.get(1).getDir() == Utils.DIRECTION.DOWN_SOUTH )){
             backtrace.remove(0);
@@ -247,7 +248,7 @@ public class GlobalAlignment {
                 st.setX(xs[j++]);
             }
             if (st.getDir() == Utils.DIRECTION.DOWN_SOUTH) {
-                System.out.println("down south");
+                
                 st.setX('-');
                 st.setY(ys[i++]);
             }
@@ -277,8 +278,10 @@ public class GlobalAlignment {
 //            }
 //        
         };
-        backtrace.stream().forEachOrdered(x -> System.out.println(x.getX() + " " + x.getY() + "\t") );
-        System.out.println("i:" + i + " j: " + j );
+        if(BioInformatics1Main.logging){
+            backtrace.stream().forEachOrdered(x -> System.out.println(x.getX() + " " + x.getY() + "\t") );
+            System.out.println("i:" + i + " j: " + j );
+        }
         while (j < xs.length) {
             backtrace.add(new BacktraceStep(xs[j++], '-', -1));
         }
@@ -308,7 +311,9 @@ public class GlobalAlignment {
         for (ArrayList<BacktraceStep> backtrace : chunks) {
             for (BacktraceStep st : backtrace) {
              if( !Character.isUpperCase(st.getX()) &&  !Character.isUpperCase(st.getY())){
-                 System.out.println("continuing:" + st.getX() + " " + st.getY() );
+                 if(BioInformatics1Main.logging){
+                     System.out.println("continuing:" + st.getX() + " " + st.getY() );
+                 }
                 continue;
             }
             sb.append(st.getX());
@@ -321,7 +326,9 @@ public class GlobalAlignment {
                 continue;
             }
             if(st.getX() != '-' && st.getY() != '-'){
-                System.out.println(st.getX() + " and " + st.getY());
+                if(BioInformatics1Main.logging){
+                    System.out.println(st.getX() + " and " + st.getY());
+                }
                 sb.append(st.getScore() > 0 ? "| " : "* ");
             }else{
                 sb.append("  ");

@@ -8,7 +8,6 @@ package bioinformatics1;
 import java.awt.Point;
 import java.util.ArrayList;
 
-
 /**
  *
  * @author Paul
@@ -180,7 +179,10 @@ public class LocalAlignment {
                 }
             }
         }
-        System.out.println("i: " + i + ", j: " + j);
+        if (BioInformatics1Main.logging) {
+            System.out.println("i: " + i + ", j: " + j);
+
+        }
         while (j > 0) {
             BacktraceStep x = new BacktraceStep(xs[j--], '-', 0);
             x.setDir(Utils.DIRECTION.WEST);
@@ -191,7 +193,9 @@ public class LocalAlignment {
             x.setDir(Utils.DIRECTION.UP);
             backtrace.add(x);
         }
-        backtrace.stream().forEachOrdered(x -> System.out.println(x));
+        if (BioInformatics1Main.logging) {
+            backtrace.stream().forEachOrdered(x -> System.out.println(x));
+        }
         return backtrace;
 
     }
@@ -243,7 +247,10 @@ public class LocalAlignment {
             }
 
         }
-        System.out.println("mymax: " + mymax + " at: " + p);
+        if (BioInformatics1Main.logging) {
+            System.out.println("mymax: " + mymax + " at: " + p);
+
+        }
         return new Pair<>(maxk, p);
     }
 
@@ -254,9 +261,11 @@ public class LocalAlignment {
         backtrace.stream().parallel().forEach(st -> {
             st.setDir(Utils.reverse(st.getDir()));
         });
-        System.out.println("");
-        System.out.println("now here is the correct order:");
-        backtrace.stream().forEachOrdered(st -> System.out.println(st));
+        if (BioInformatics1Main.logging) {
+            System.out.println("");
+            System.out.println("now here is the correct order:");
+            backtrace.stream().forEachOrdered(st -> System.out.println(st));
+        }
 
         if (backtrace.size() > 1 && backtrace.get(0).getDir() == Utils.DIRECTION.DIAG && (backtrace.get(1).getDir() == Utils.DIRECTION.UP_EAST || backtrace.get(1).getDir() == Utils.DIRECTION.DOWN_SOUTH)) {
             backtrace.remove(0);
@@ -282,7 +291,7 @@ public class LocalAlignment {
                 st.setX(xs[j++]);
             }
             if (st.getDir() == Utils.DIRECTION.DOWN_SOUTH) {
-                System.out.println("down south");
+
                 st.setX('-');
                 st.setY(ys[i++]);
             }
@@ -313,8 +322,10 @@ public class LocalAlignment {
 //            }
 //        
         };
-        backtrace.stream().forEachOrdered(x -> System.out.println(x.getX() + " " + x.getY() + "\t"));
-        System.out.println("i:" + i + " j: " + j);
+        if (BioInformatics1Main.logging) {
+            backtrace.stream().forEachOrdered(x -> System.out.println(x.getX() + " " + x.getY() + "\t"));
+            System.out.println("i:" + i + " j: " + j);
+        }
         while (j < xs.length) {
             backtrace.add(new BacktraceStep(xs[j++], '-', -1));
         }
@@ -345,7 +356,10 @@ public class LocalAlignment {
         for (ArrayList<BacktraceStep> backtrace : chunks) {
             for (BacktraceStep st : backtrace) {
                 if (!Character.isUpperCase(st.getX()) && !Character.isUpperCase(st.getY())) {
-                    System.out.println("continuing:" + st.getX() + " " + st.getY());
+                    if(BioInformatics1Main.logging){
+                        System.out.println("continuing:" + st.getX() + " " + st.getY());
+                    }
+                    
                     continue;
                 }
                 sb.append(st.getX());
@@ -358,7 +372,9 @@ public class LocalAlignment {
                     continue;
                 }
                 if (st.getX() != '-' && st.getY() != '-') {
-                    System.out.println(st.getX() + " and " + st.getY());
+                    if(BioInformatics1Main.logging){
+                        System.out.println(st.getX() + " and " + st.getY());
+                    }
                     sb.append(st.getScore() > 0 ? "| " : "* ");
                 } else {
                     sb.append("  ");

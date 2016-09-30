@@ -1,1 +1,25 @@
+REQUIREMENTS:
+Any platform, just install java and ant. 
+For me (Fedora 24), 
+    sudo dnf install java
+    sudo dnf install ant
 
+Alternatively, one can open this as a netbeans project and run it through there 
+(any platform).
+
+BUILD:
+    In the BioInfoHW1 directory (where the build.xml file is) simply run the 
+    'ant' command.
+
+    [user@comp BioInfoHW1]$ ant
+
+    This builds the program.
+    You can now run the jar located in the dist directory by calling 
+    'java -jar' on it.
+
+[user@comp BioInfoHW1]$ java -jar ./dist/BioInformatics1.jar -l gene1.fasta gene2.fasta -w50
+
+You can enter -l for local alignment or -g for global followed by the file
+locations of the two fasta files. You can also optionally change the output
+width from the default 50 character by specifying "-wNUMBER" where NUMBER is the
+the number of characters to specify the width.  
