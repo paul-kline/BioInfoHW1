@@ -7,7 +7,7 @@ package bioinformatics1;
 
 import java.awt.Point;
 import java.util.ArrayList;
-import javafx.util.Pair;
+
 
 /**
  *
